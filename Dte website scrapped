@@ -1,0 +1,84 @@
+import requests
+import re
+import bs4
+import csv
+import matplotlib.pyplot as plt
+url=requests.get("http://dtemaharashtra.gov.in/frmInstituteList.aspx")
+soup=bs4.BeautifulSoup(url.content,'lxml')
+district=[]
+autodict={'Amravati':0,'Aurangabad':0,'Mumbai':0,'Nagpur':0,'Nashik':0,'Pune':0}
+autostatus=[]
+main=soup.find('table',{'class':"AppFormTableWithOutBorder",'cellpadding':"5"})
+main=main.find_all('td')
+with open('dte__records.csv','w',newline="") as csv_file:
+	header=['ID','College Name','Address','Principal Name','Email','Personal Number','Office Number','region','Register Name','District','DTE REGION','Autonomy status']
+	writer = csv.writer(csv_file)
+	writer.writerow(header)
+	for h in main:
+		mainlink=h.find('a',href=True).get('href')
+		newmainlink=str("http://dtemaharashtra.gov.in/"+mainlink)
+		urll=requests.get(newmainlink)
+		soup1=bs4.BeautifulSoup(urll.text,'lxml')	
+		container=soup1.find('table',{'class':'DataGrid'})
+		container=container.find_all('tr')
+		for do in container[2:]:
+			row=[]
+			link=do.find('a', href=True).get('href')
+			new=str("http://dtemaharashtra.gov.in/"+link)
+			URL=requests.get(new)
+			SOUP=bs4.BeautifulSoup(URL.text,'lxml')	
+			table=SOUP.findAll('table',{'class':'AppFormTable'})[0]
+			clg=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblInstituteNameEnglish"})[0].text
+			if( 'Engineering' in clg or 'Technology' in clg):
+				if ("Management" not in clg and "Pharmacy" not in clg):
+					id=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblInstituteCode"})[0].text
+					row.append(id)
+					row.append(clg)
+					add=table.findAll('span',{'id':'ctl00_ContentPlaceHolder1_lblAddressEnglish'})[0].text
+					row.append(add)
+					prn=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblPrincipalNameEnglish"})[0].text
+					row.append(prn)
+					em=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblEMailAddress"})[0].text
+					row.append(em)
+					perno=table.findAll('span',{'id':'ctl00_ContentPlaceHolder1_lblPersonalPhoneNo'})[0].text
+					row.append(perno.split("Ext.-")[0])
+					offno=table.findAll('span',{'id':'ctl00_ContentPlaceHolder1_lblOfficePhoneNo'})[0].text
+					row.append(offno.split("Ext.-")[0])
+					reg=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblRegionType"})[0].text
+					row.append(reg)
+					registrarnm=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblRegistrarNameEnglish"})[0].text
+					row.append(registrarnm)
+					dist=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblDistrict"})[0].text
+					district.append(dist)
+					row.append(dist)
+					DTEregion=table.findAll('span',{'id':"ctl00_ContentPlaceHolder1_lblRegion"})[0].text
+					row.append(DTEregion)
+					autost=table.findAll("span",{"id":"ctl00_ContentPlaceHolder1_lblStatus2"})[0].text
+					if autost=='Autonomous':
+						autodict[DTEregion]+=1
+					row.append(autost)
+					writer.writerow(row)
+
+di={}
+for d in district:
+	if d in di:
+		di[d]+=1
+	else:
+		di[d]=1
+x=list(di.keys())
+y=list(di.values())
+plt.bar(x,y, color ='maroon',width = 0.4) 
+plt.xlabel("District") 
+plt.ylabel("Count of colleges") 
+plt.xticks(rotation=90)
+plt.title("Number of colleges in each district of Maharashtra") 
+plt.show() 
+
+
+region=list(autodict.keys())
+autonomous=list(autodict.values())
+explode = (0, 0.1, 0, 0,0,0) 
+plt.pie(autonomous, explode=explode, labels=region, autopct='%1.1f%%',shadow=True, startangle=90)
+plt.axis('equal')  
+plt.title('Autonomous Status in each region')
+plt.show()
